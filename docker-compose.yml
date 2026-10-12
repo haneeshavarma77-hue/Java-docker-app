@@ -9,13 +9,40 @@ services:
       dockerfile: Dockerfile
     container_name: java-task-api
     ports:
-      - "8080:8080"
+      - "8080:8080"          # direct API access (optional, remove in prod)
     restart: unless-stopped
     environment:
       - SPRING_PROFILES_ACTIVE=prod
+    networks:
+      - task-net
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 20s
+
+  # ── Nginx reverse proxy + frontend ────────────────────────────────────────
+  frontend:
+    build:
+      context: .                    # project root so COPY paths resolve correctly
+      dockerfile: nginx/Dockerfile
+    container_name: java-task-frontend
+    ports:
+      - "80:80"              # open http://localhost in your browser
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - task-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  task-net:
+    driver: bridge

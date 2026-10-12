@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task Manager</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+    header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: .5px; }
+    #statusBadge {
+      font-size: .75rem;
+      padding: .3rem .75rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,.25);
+      backdrop-filter: blur(4px);
+    }
+    #statusBadge.healthy  { background: rgba(72, 199, 142, .35); }
+    #statusBadge.unhealthy{ background: rgba(255, 99,  99, .35); }
+
+    /* ── Layout ── */
+    main {
+      max-width: 760px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+
+    /* ── Form ── */
+    .form-row { display: flex; flex-direction: column; gap: .75rem; }
+    .form-row input, .form-row textarea {
+      width: 100%;
+      padding: .65rem .9rem;
+      border: 1.5px solid #dde1e9;
+      border-radius: 8px;
+      font-size: .95rem;
+      transition: border-color .2s;
+      resize: vertical;
+      font-family: inherit;
+    }
+    .form-row input:focus, .form-row textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .form-row textarea { min-height: 80px; }
+
+    button {
+      cursor: pointer;
+      font-family: inherit;
+      font-size: .9rem;
+      border: none;
+      border-radius: 8px;
+      padding: .6rem 1.2rem;
+      transition: opacity .2s, transform .1s;
+    }
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      width: 100%;
+      padding: .75rem;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .btn-primary:hover:not(:disabled) { opacity: .88; }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .stat {
+      flex: 1;
+      min-width: 120px;
+      background: #f7f8fc;
+      border-radius: 10px;
+      padding: .9rem 1rem;
+      text-align: center;
+    }
+    .stat .number { font-size: 1.8rem; font-weight: 700; color: #667eea; }
+    .stat .label  { font-size: .75rem; color: #888; margin-top: .15rem; text-transform: uppercase; }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-bar button {
+      background: #f0f2f5;
+      color: #555;
+      padding: .4rem .9rem;
+    }
+    .filter-bar button.active {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+    }
+    .filter-bar button:hover:not(.active) { background: #e2e5ee; }
+
+    #searchInput {
+      flex: 1;
+      min-width: 160px;
+      padding: .4rem .8rem;
+      border: 1.5px solid #dde1e9;
+      border-radius: 8px;
+      font-size: .9rem;
+    }
+    #searchInput:focus { outline: none; border-color: #667eea; }
+
+    /* ── Task list ── */
+    #taskList { display: flex; flex-direction: column; gap: .75rem; }
+
+    .task-item {
+      display: flex;
+      align-items: flex-start;
+      gap: .9rem;
+      padding: 1rem 1.1rem;
+      border-radius: 10px;
+      border: 1.5px solid #eaecf1;
+      background: #fff;
+      transition: box-shadow .2s, border-color .2s;
+    }
+    .task-item:hover { box-shadow: 0 2px 8px rgba(102,126,234,.12); border-color: #c8cfe8; }
+    .task-item.done  { opacity: .6; }
+
+    .task-checkbox {
+      width: 20px; height: 20px;
+      accent-color: #667eea;
+      flex-shrink: 0;
+      margin-top: 2px;
+      cursor: pointer;
+    }
+
+    .task-body { flex: 1; min-width: 0; }
+    .task-title {
+      font-weight: 600;
+      font-size: .97rem;
+      word-break: break-word;
+    }
+    .task-item.done .task-title { text-decoration: line-through; color: #aaa; }
+    .task-desc {
+      font-size: .85rem;
+      color: #777;
+      margin-top: .2rem;
+      word-break: break-word;
+    }
+    .task-meta {
+      font-size: .72rem;
+      color: #bbb;
+      margin-top: .3rem;
+    }
+
+    .task-actions { display: flex; gap: .4rem; flex-shrink: 0; }
+    .btn-edit   { background: #eef0fc; color: #667eea; }
+    .btn-edit:hover   { background: #dde1f7; }
+    .btn-delete { background: #fdecea; color: #e05252; }
+    .btn-delete:hover { background: #fbd5d3; }
+
+    /* ── Empty state ── */
+    #emptyState {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: #aaa;
+      display: none;
+    }
+    #emptyState .icon { font-size: 3rem; }
+    #emptyState p { margin-top: .5rem; font-size: .95rem; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #323232;
+      color: #fff;
+      padding: .75rem 1.25rem;
+      border-radius: 8px;
+      font-size: .9rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,.2);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .3s, transform .3s;
+      z-index: 999;
+      max-width: 320px;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.success { background: #2d7d46; }
+    #toast.error   { background: #c0392b; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+      opacity: 0; pointer-events: none;
+      transition: opacity .25s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: #fff;
+      border-radius: 14px;
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 440px;
+      transform: translateY(16px);
+      transition: transform .25s;
+      box-shadow: 0 8px 30px rgba(0,0,0,.15);
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal h2 { font-size: 1.1rem; margin-bottom: 1.1rem; }
+    .modal-actions { display: flex; gap: .6rem; margin-top: 1.1rem; justify-content: flex-end; }
+    .btn-cancel { background: #f0f2f5; color: #555; }
+    .btn-save   { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+
+    @media (max-width: 500px) {
+      header { flex-direction: column; gap: .5rem; text-align: center; }
+      .task-actions { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📋 Task Manager</h1>
+  <span id="statusBadge">Connecting…</span>
+</header>
+
+<main>
+
+  <!-- Add Task -->
+  <div class="card">
+    <h2>Add New Task</h2>
+    <form id="addForm" class="form-row">
+      <input id="titleInput" type="text" placeholder="Task title *" required maxlength="120" />
+      <textarea id="descInput" placeholder="Description (optional)"></textarea>
+      <button class="btn-primary" type="submit" id="addBtn">＋ Add Task</button>
+    </form>
+  </div>
+
+  <!-- Stats -->
+  <div class="card">
+    <div class="stats-bar">
+      <div class="stat"><div class="number" id="statTotal">0</div><div class="label">Total</div></div>
+      <div class="stat"><div class="number" id="statPending">0</div><div class="label">Pending</div></div>
+      <div class="stat"><div class="number" id="statDone">0</div><div class="label">Completed</div></div>
+    </div>
+  </div>
+
+  <!-- Task List -->
+  <div class="card">
+    <h2>Tasks</h2>
+
+    <div class="filter-bar" style="margin-bottom:.9rem;">
+      <button class="active" data-filter="all" onclick="setFilter('all',this)">All</button>
+      <button data-filter="pending"  onclick="setFilter('pending',this)">Pending</button>
+      <button data-filter="done"     onclick="setFilter('done',this)">Done</button>
+      <input id="searchInput" type="search" placeholder="Search tasks…" oninput="renderList()" />
+    </div>
+
+    <div id="taskList"></div>
+    <div id="emptyState">
+      <div class="icon">🗒️</div>
+      <p>No tasks found.</p>
+    </div>
+  </div>
+
+</main>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
+    <h2 id="editModalTitle">Edit Task</h2>
+    <div class="form-row">
+      <input id="editTitle" type="text" placeholder="Title *" required maxlength="120" />
+      <textarea id="editDesc" placeholder="Description"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save"   onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" role="alert" aria-live="polite"></div>
+
+<script>
+  const API = '';           // same origin — Spring serves static files at /
+  let tasks       = [];
+  let currentFilter = 'all';
+  let editingId   = null;
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+
+  async function init() {
+    await Promise.all([checkHealth(), loadTasks()]);
+  }
+
+  // ── Health check ──────────────────────────────────────────────────────────
+
+  async function checkHealth() {
+    const badge = document.getElementById('statusBadge');
+    try {
+      const res = await fetch(`${API}/health`);
+      if (res.ok) {
+        badge.textContent = '● API Healthy';
+        badge.className = 'healthy';
+      } else { throw new Error(); }
+    } catch {
+      badge.textContent = '● API Offline';
+      badge.className = 'unhealthy';
+    }
+  }
+
+  // ── Load tasks ────────────────────────────────────────────────────────────
+
+  async function loadTasks() {
+    try {
+      const res  = await fetch(`${API}/tasks`);
+      const data = await res.json();
+      tasks = data.tasks || [];
+      renderList();
+      updateStats();
+    } catch {
+      showToast('Failed to load tasks.', 'error');
+    }
+  }
+
+  // ── Create task ───────────────────────────────────────────────────────────
+
+  document.getElementById('addForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('titleInput').value.trim();
+    const desc  = document.getElementById('descInput').value.trim();
+    if (!title) return;
+
+    const btn = document.getElementById('addBtn');
+    btn.disabled = true;
+    btn.textContent = 'Adding…';
+
+    try {
+      const res = await fetch(`${API}/tasks`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ title, description: desc }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to create task');
+      }
+      const task = await res.json();
+      tasks.push(task);
+      renderList();
+      updateStats();
+      document.getElementById('addForm').reset();
+      showToast('Task added!', 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '＋ Add Task';
+    }
+  });
+
+  // ── Toggle done ───────────────────────────────────────────────────────────
+
+  async function toggleDone(id, done) {
+    try {
+      const res = await fetch(`${API}/tasks/${id}`, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ done }),
+      });
+      if (!res.ok) throw new Error();
+      const updated = await res.json();
+      tasks = tasks.map(t => t.id === id ? updated : t);
+      renderList();
+      updateStats();
+      showToast(done ? 'Marked as done!' : 'Marked as pending.', 'success');
+    } catch {
+      showToast('Could not update task.', 'error');
+    }
+  }
+
+  // ── Delete task ───────────────────────────────────────────────────────────
+
+  async function deleteTask(id) {
+    if (!confirm('Delete this task?')) return;
+    try {
+      const res = await fetch(`${API}/tasks/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      tasks = tasks.filter(t => t.id !== id);
+      renderList();
+      updateStats();
+      showToast('Task deleted.', 'success');
+    } catch {
+      showToast('Could not delete task.', 'error');
+    }
+  }
+
+  // ── Edit modal ────────────────────────────────────────────────────────────
+
+  function openEdit(id) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    editingId = id;
+    document.getElementById('editTitle').value = task.title;
+    document.getElementById('editDesc').value  = task.description || '';
+    document.getElementById('editModal').classList.add('open');
+    document.getElementById('editTitle').focus();
+  }
+
+  function closeModal() {
+    document.getElementById('editModal').classList.remove('open');
+    editingId = null;
+  }
+
+  async function saveEdit() {
+    const title = document.getElementById('editTitle').value.trim();
+    const desc  = document.getElementById('editDesc').value.trim();
+    if (!title || editingId === null) return;
+
+    try {
+      const res = await fetch(`${API}/tasks/${editingId}`, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ title, description: desc }),
+      });
+      if (!res.ok) throw new Error();
+      const updated = await res.json();
+      tasks = tasks.map(t => t.id === editingId ? updated : t);
+      renderList();
+      closeModal();
+      showToast('Task updated!', 'success');
+    } catch {
+      showToast('Could not update task.', 'error');
+    }
+  }
+
+  // Close modal on overlay click
+  document.getElementById('editModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+
+  // Close modal on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  // ── Filter ────────────────────────────────────────────────────────────────
+
+  function setFilter(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-bar button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderList();
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  function renderList() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+
+    const filtered = tasks.filter(t => {
+      const matchFilter =
+        currentFilter === 'all'     ? true :
+        currentFilter === 'done'    ? t.done :
+        currentFilter === 'pending' ? !t.done : true;
+
+      const matchSearch =
+        !search ||
+        t.title.toLowerCase().includes(search) ||
+        (t.description || '').toLowerCase().includes(search);
+
+      return matchFilter && matchSearch;
+    });
+
+    const list  = document.getElementById('taskList');
+    const empty = document.getElementById('emptyState');
+
+    if (filtered.length === 0) {
+      list.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    list.innerHTML = filtered.map(t => `
+      <div class="task-item ${t.done ? 'done' : ''}" id="task-${t.id}">
+        <input
+          class="task-checkbox"
+          type="checkbox"
+          ${t.done ? 'checked' : ''}
+          onchange="toggleDone(${t.id}, this.checked)"
+          aria-label="Mark '${escHtml(t.title)}' as ${t.done ? 'pending' : 'done'}"
+        />
+        <div class="task-body">
+          <div class="task-title">${escHtml(t.title)}</div>
+          ${t.description ? `<div class="task-desc">${escHtml(t.description)}</div>` : ''}
+          <div class="task-meta">#${t.id} · ${formatDate(t.createdAt)}</div>
+        </div>
+        <div class="task-actions">
+          <button class="btn-edit"   onclick="openEdit(${t.id})"    aria-label="Edit task">✏️</button>
+          <button class="btn-delete" onclick="deleteTask(${t.id})"  aria-label="Delete task">🗑️</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
+
+  function updateStats() {
+    const done    = tasks.filter(t => t.done).length;
+    const pending = tasks.length - done;
+    document.getElementById('statTotal').textContent   = tasks.length;
+    document.getElementById('statPending').textContent = pending;
+    document.getElementById('statDone').textContent    = done;
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '';
+    try {
+      return new Date(iso).toLocaleString(undefined, {
+        month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+    } catch { return ''; }
+  }
+
+  let toastTimer;
+  function showToast(msg, type = 'info') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className   = `show ${type}`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+  }
+
+  // ── Start ─────────────────────────────────────────────────────────────────
+  init();
+</script>
+</body>
+</html>
