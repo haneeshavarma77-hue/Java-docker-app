@@ -7,9 +7,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: api            # selects the api stage from the combined Dockerfile
     container_name: java-task-api
     ports:
-      - "8080:8080"          # direct API access (optional, remove in prod)
+      - "8080:8080"
     restart: unless-stopped
     environment:
       - SPRING_PROFILES_ACTIVE=prod
@@ -25,11 +26,12 @@ services:
   # ── Nginx reverse proxy + frontend ────────────────────────────────────────
   frontend:
     build:
-      context: .                    # project root so COPY paths resolve correctly
-      dockerfile: nginx/Dockerfile
+      context: .
+      dockerfile: Dockerfile
+      target: frontend       # selects the frontend stage from the combined Dockerfile
     container_name: java-task-frontend
     ports:
-      - "80:80"              # open http://localhost in your browser
+      - "80:80"
     restart: unless-stopped
     environment:
       - API_HOST=api         # Docker Compose: resolves to the 'api' service name
